@@ -903,7 +903,9 @@ class Mail:
         if not search_string:
             search_string = "(UID %s:* UNSEEN)" % str(self.last_uid)
         else:
-            search_string = re.sub(r'\${lastUID}', str(self.last_uid), search_string, flags=re.IGNORECASE)
+            assert self.last_uid.isdigit()
+            next_uid = str(int(self.last_uid) + 1)
+            search_string = re.sub(r'\${lastUID}', next_uid, search_string, flags=re.IGNORECASE)
 
         if re.match(r'.*\bUID\b\s*:.*', search_string) and self.last_uid == '':
             # empty mailbox
@@ -914,6 +916,13 @@ class Mail:
             if rv != 'OK':
                 logging.info("No messages found!")
                 return
+
+            # Debug: log what UIDs were actually returned by the search
+            if data[0]:
+                found_uids = [self.config.tool.binary_to_string(uid) for uid in data[0].split()]
+                logging.info("Search '%s' returned UIDs: %s" % (search_string, found_uids))
+            else:
+                logging.info("Search '%s' returned no UIDs" % search_string)
 
         except imaplib2.IMAP4_SSL.error as search_error:
             error_msgs = [self.config.tool.binary_to_string(arg) for arg in search_error.args]
@@ -947,6 +956,12 @@ class Mail:
         for cur_uid in sorted(data[0].split()):
             current_uid = self.config.tool.binary_to_string(cur_uid)
 
+            # Skip UIDs that are <= last processed UID (IMAP server bug workaround)
+            if current_uid.isdigit() and self.last_uid.isdigit():
+                if int(current_uid) <= int(self.last_uid):
+                    logging.info("Skipping UID '%s' as it's <= last processed UID '%s'" % (current_uid, self.last_uid))
+                    continue
+
             try:
                 rv, data = self.mailbox.uid('fetch', cur_uid, '(RFC822)')
                 if rv != 'OK':
@@ -965,13 +980,6 @@ class Mail:
                 logging.critical("Cannot process mail with UID '%s': %s" % (current_uid,
                                                                             ', '.join(map(str, mail_error.args))))
 
-            finally:
-                # remember new UID for next loop
-                max_uid = current_uid
-
-        if len(mails) > 0:
-            self.last_uid = max_uid
-            logging.info("Got %i new mail(s) to forward, using most recent UID: '%s'" % (len(mails), self.last_uid))
         return mails
 
 
@@ -1064,7 +1072,13 @@ def main():
 
                 # send mail data via TG bot
                 if mails is not None and len(mails) > 0:
-                    tg_bot.send_message(mails)
+                    success = tg_bot.send_message(mails)
+
+                    # Only update UID after successful Telegram delivery
+                    if success:
+                        max_sent_uid = max(int(mail.uid) for mail in mails)
+                        mailbox.last_uid = str(max_sent_uid)
+                        logging.info("Successfully sent %i mail(s), updated last UID to: '%s'" % (len(mails), mailbox.last_uid))
 
                 if config.imap_push_mode:
                     logging.info("IMAP IDLE mode")
