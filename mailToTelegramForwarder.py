@@ -143,6 +143,7 @@ class Config:
 
     tg_bot_token = None
     tg_forward_to_chat_id = None
+    tg_forward_to_thread_id = None
     tg_prefer_html = True
     tg_markdown_version = 2
     tg_forward_mail_content = True
@@ -191,6 +192,8 @@ class Config:
                                                          self.tg_forward_attachment, bool)
             self.tg_forward_embedded_images = self.get_config('Telegram', 'forward_embedded_images',
                                                               self.tg_forward_embedded_images, bool)
+            self.tg_forward_to_thread_id = self.get_config('Telegram', 'forward_to_thread_id',
+                                                         self.tg_forward_to_thread_id, int)
             if cmd_args.read_old_mails:
                 self.imap_read_old_mails = True
 
@@ -478,6 +481,7 @@ class TelegramBot:
                                 title = '%i. %s: %s' % (image_no, mail.mail_subject, image.get_title())
                                 doc_message: telegram.Message = bot.send_photo(
                                     chat_id=self.config.tg_forward_to_chat_id,
+                                    message_thread_id=self.config.tg_forward_to_thread_id,
                                     parse_mode=parser,
                                     caption=title,
                                     photo=image.file,
@@ -502,6 +506,7 @@ class TelegramBot:
                             )
 
                         tg_message = bot.send_message(chat_id=self.config.tg_forward_to_chat_id,
+                                                      message_thread_id=self.config.tg_forward_to_thread_id,
                                                       parse_mode=parser,
                                                       text=message,
                                                       disable_web_page_preview=False)
@@ -523,6 +528,7 @@ class TelegramBot:
                                 caption = '*' + subject + '*:\n' + file_name
 
                             tg_message = bot.send_document(chat_id=self.config.tg_forward_to_chat_id,
+                                                           message_thread_id=self.config.tg_forward_to_thread_id,
                                                            parse_mode=parser,
                                                            caption=caption,
                                                            document=attachment.file,
@@ -540,6 +546,7 @@ class TelegramBot:
                     try:
                         # try to send error via telegram, and ignore further errors
                         bot.send_message(chat_id=self.config.tg_forward_to_chat_id,
+                                         message_thread_id=self.config.tg_forward_to_thread_id,
                                          parse_mode=telegram.ParseMode.MARKDOWN_V2,
                                          text=telegram.utils.helpers.escape_markdown(msg, version=2),
                                          disable_web_page_preview=False)
@@ -554,6 +561,7 @@ class TelegramBot:
                     try:
                         # try to send error via telegram, and ignore further errors
                         bot.send_message(chat_id=self.config.tg_forward_to_chat_id,
+                                         message_thread_id=self.config.tg_forward_to_thread_id,
                                          parse_mode=telegram.ParseMode.MARKDOWN_V2,
                                          text=telegram.utils.helpers.escape_markdown(msg, version=2),
                                          disable_web_page_preview=False)

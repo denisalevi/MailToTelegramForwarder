@@ -199,12 +199,20 @@ be a group or individual chat. The easiest way to get the ID of a chat is to add
 chat `/getgroupid` (ID < 0) provides ID of group chat.
 
 Hint: Bot should be added to the chat to be able to post.
+
+`forward_to_thread_id` (optional): When using a supergroup with multiple topics,
+you can specify the thread ID of a specific topic. The thread ID can be found by
+copying the link to the topic and extracting the number after the last slash
+(e.g., in `https://t.me/c/123456/3` the thread ID is `3`).
+
 ```
 [Telegram]
 # from @BotFather: Like "<Bot ID:Key>"
 bot_token: <Bot Token>
 # ID of TG chat or user (<ID>, ex.: 123456) who gets forwarded messages.
 forward_to_chat_id: <Chat/User ID>
+# Optional: Thread ID for supergroup topics
+#forward_to_thread_id: <Thread ID>
 ```
 
 **Optional** part of Telegram related configuration:
